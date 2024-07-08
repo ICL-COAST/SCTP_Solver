@@ -7,7 +7,7 @@ The inputs can be categorized as: simulation parameters and initial conditions.
 
 a       =       13356        # [km]  - semi-major axis   
 e       =       0.50        # [-]   - eccentricity  
-i       =       20.00        # [deg] - inclination
+i       =       30.00        # [deg] - inclination
 RAAN    =       0.00        # [deg] - right ascencion of ascending node
 omega   =       0.00        # [deg] - argument of perigee
 theta   =       10.0        # [deg] - true anomaly

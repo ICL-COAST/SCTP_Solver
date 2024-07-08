@@ -1,4 +1,5 @@
 using SatelliteToolbox
+using SatelliteToolboxAtmosphericModels
 
 
 function atmosphere_model_NRLMSISE00(variables)
@@ -16,12 +17,28 @@ function atmosphere_model_NRLMSISE00(variables)
     f107A = variables[10]                                                # 81 day average f10.7 flux around the specified year
     f107 = variables[11]                                                # daily f10.7 flux for previous day
     ap = variables[12]                                                  # magnetic index
-    outputs = nrlmsise00(j_day, altitude, latitude, longitude, f107A, f107, ap, output_si = true,
-    dversion = true)
-    den_N, den_N2, den_O, den_aO, den_O2, den_H, den_He, den_Ar, 
-    density, T_exo, T_alt = outputs.den_N, outputs.den_N2, outputs.den_O, outputs.den_aO, outputs.den_O2, outputs.den_H, outputs.den_He, outputs.den_Ar, outputs.den_Total, outputs.T_exo, outputs.T_alt
+    outputs = AtmosphericModels.nrlmsise00(j_day, altitude, latitude, longitude, f107A, f107, ap)
+
+    #den_N, den_N2, den_O, den_aO, den_O2, den_H, den_He, den_Ar, 
+    #density, T_exo, T_alt = outputs.den_N, outputs.den_N2, outputs.den_O, outputs.den_aO, outputs.den_O2, outputs.den_H, outputs.den_He, outputs.den_Ar, outputs.den_Total, outputs.T_exo, outputs.T_alt
+    
+    den_N = outputs.N_number_density
+    den_N2 = outputs.N2_number_density
+    den_O = outputs.O_number_density
+    den_aO = outputs.aO_number_density
+    den_O2 = outputs.O2_number_density
+    den_H = outputs.H_number_density
+    den_He = outputs.He_number_density
+    den_Ar = outputs.Ar_number_density
+    T_exo = outputs.exospheric_temperature
+    T_alt = outputs.temperature
+    density = outputs.total_density
+
+
     R_gas = R / (den_N * mu_N.^2 + den_N2 * mu_N2.^2 + den_O * mu_O.^2 + den_aO * mu_AO.^2 + den_O2 * mu_O2.^2 + den_H * mu_H.^2 + den_He * mu_He.^2 + den_Ar * mu_Ar.^2) * Na * density
+    
     pressure = density * R_gas * T_alt
+
     return [den_N, den_N2, den_O, den_aO, den_O2, den_H, den_He, den_Ar, density, pressure, T_alt, T_exo]
 end
 
