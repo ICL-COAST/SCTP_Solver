@@ -24,6 +24,8 @@ function Equinoctial(x, par, t)
     The function involves a variety of physical computations, including transformation to Earth Centered Inertial and Earth Centered Earth Fixed coordinates, 
     aerodynamic drag and geopotential computations, as well as derivation of the equations of motion in the equinoctial element set.
     =#
+    
+    global function_calls
 
     # Unpack the elements of the state vector
     p, f, g, h, k, L = x[1], x[2], x[3], x[4], x[5], x[6]
@@ -84,12 +86,13 @@ function Equinoctial(x, par, t)
     dhdt = sqrt(p / mu_Earth) * s2 * a_n / 2.0 / w * cos(L)
     dkdt = sqrt(p / mu_Earth) * s2 * a_n / 2.0 / w * sin(L)
     dLdt = sqrt(mu_Earth * p) * (w / p)^2 + 1.0 / w * sqrt(p / mu_Earth) * (h * sin(L) - k * cos(L)) * a_n
-
+    function_calls += 1
     return [dpdt, dfdt, dgdt, dhdt, dkdt, dLdt]
 end
 
 
 function Equinoctial_simple(x, par, t)
+    global function_calls
 
     p, f, g, h, k, L = x[1], x[2], x[3], x[4], x[5], x[6]
     s2 = 1.0 + h^2 + k^2
@@ -124,6 +127,6 @@ function Equinoctial_simple(x, par, t)
     dhdt = sqrt(p / mu_Earth) * s2 * a_n / 2 / w * cos(L)
     dkdt = sqrt(p / mu_Earth) * s2 * a_n / 2 / w * sin(L)
     dLdt = sqrt(mu_Earth * p) * (w / p)^2 + 1 / w * sqrt(p / mu_Earth) * (h * sin(L) - k * cos(L)) * a_n
-
+    function_calls += 1
     return [dpdt, dfdt, dgdt, dhdt, dkdt, dLdt]
 end

@@ -64,6 +64,7 @@ function build_Jacobian_spectrum(Jacobian_array, sys_size, problem_type)
 
     if problem_type == "IVP"
         order = size(spectral_basis_gc_IVP)[1] - 1
+        int_order = size(spectral_basis_gc_IVP)[2] - 1
         Jacobian_spectrum = zeros(order + 1, sys_size, sys_size)
         bases_local = spectral_basis_gc_IVP
         nodes_local = gc_nodes_IVP
@@ -92,9 +93,9 @@ end
 function build_solution(C, spectral_basis, sys_size)
 
     order, int_order = size(spectral_basis)[1] - 1, size(spectral_basis)[2]
-    Solution = zeros(Float64, int_order, sys_size)
+    Solution = zeros(Float64, int_order, sys_size) #int order
 
-    for i in order + 1 : -1 : 1
+    for i in order + 1 : -1 : 1 #order
         for k in 1 : sys_size
             Solution[:, k] .+= C[(i - 1) .* sys_size + k] .* spectral_basis[i, :]
         end
@@ -140,11 +141,13 @@ function create_basis_set(tau, order, type)
     at the time instances [tau].
     
     Parameters:
-    - tau : 1D array of scaled time instances [-1, 1]
+    - tau : 1D array of scaled time instances [-1, 1], nodes initialised from build_quadrature
     - order : the maximum order of the polynomial expansions
     - type : to be implemented (function will have multiple choices of basis expansions)
     =#
     if type == "Legendre"
+
+        #finds polynomials themselves p_m (tau)
         basis_array = zeros(Float64, order + 1, size(tau)[1])
         basis_array[1, :] .= 1.0
         basis_array[2, :] .= tau
@@ -153,6 +156,7 @@ function create_basis_set(tau, order, type)
             basis_array[i, :] .= 1. ./ (i - 1) .* ((2 * i - 3) .* tau .* basis_array[i - 1, :] .- (i - 2) * basis_array[i - 2, :])
         end
 
+        #finds first derivatives dp_m/d_tau (tau)
         basis_array_deriv = zeros(Float64, order + 1, size(tau)[1])
         basis_array_deriv[2, :] .= 1.0
 
@@ -160,6 +164,7 @@ function create_basis_set(tau, order, type)
             basis_array_deriv[i, :] = (i - 1) .* basis_array[i - 1, :] .+ tau .* basis_array_deriv[i-1, :]
         end
 
+        #finds second derivatives d^2 p_m/ d_tau^2 (tau)
         basis_array_deriv2 = zeros(Float64, order + 1, size(tau)[1])
 
         for i in 3 : order + 1
@@ -200,7 +205,7 @@ function Jacobian_IVP(solution, RHS, interval, tau)
     This function calculates the Jacobian matrix for a given solution.
     It uses the solution, a right-hand side function RHS, time interval, and tau.
     It applies finite difference method to estimate the Jacobian.
-    The function returns a Jacobian matrix.
+    The function returns a Jacobian matrix. so for a system of size 6, the output is a 6x6 matrix
     =#
 
     # Set a small value epsilon for finite differences

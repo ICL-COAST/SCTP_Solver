@@ -41,7 +41,7 @@ function build_jacobian_matrix(Jacobian_spectrum, sys_size)
 
    # Initialize the Jacobian matrix with zeros
    jac_matrix = zeros(Float64, (order + 1) * sys_size, (order + 1) * sys_size)
-
+   #println(size(Jacobian_spectrum))
    # Calculate Jacobian matrix if use_jacobian is set to true
    Threads.@threads for i in 1 : order + 1
         for j in 1 : i
@@ -62,7 +62,7 @@ function build_jacobian_matrix(Jacobian_spectrum, sys_size)
                     jac_matrix[(j - 1) * sys_size + 1 : j * sys_size, (i - 1) * sys_size + 1 : i * sys_size]
         end
     end
-   # Return the system matrix
+   # Return the jacobian matrix, NOTE: this is the negative of the jacobian matrix
    return jac_matrix
 end
 
@@ -81,7 +81,7 @@ function build_RHS_term_IVP(RHS_array, Jacobian_matrix, C, sys_size)
     # Initialize the Source vector with zeros
     Source = zeros(Float64, (order + 1) * sys_size)
 
-    # Calculate the Source vector
+    # Calculate the Source vector, lower case s term in the equation
     Threads.@threads for i in 1 : order + 1
         for j in 1 : int_order
             Source[(i - 1) * sys_size + 1: i * sys_size] .+= 
@@ -119,8 +119,6 @@ function build_BCs_IVP(X0, sys_size)
     return BC
 end
 
-
-
 function build_RHS_array_IVP(solution, RHS, interval)
 
     int_order = size(solution)[1]
@@ -137,12 +135,17 @@ end
 
 
 function build_Jacobian_array_IVP(solution, RHS, interval)
+    #holds the array of jacobian matrices for each of the integration nodes
 
+    #println("inside build jacobian array ivp")
+    #println(size(solution))
     int_order, sys_size = size(solution)
     Jacobian_array = zeros(Float64, int_order, sys_size, sys_size)
     Threads.@threads for i in 1 : int_order
         Jacobian_array[i, :, :] .= Jacobian_IVP(solution[i, :], RHS, interval, gc_nodes_IVP[i])
     end
+    #println("Jacobian array")
+    #println(size(Jacobian_array))
     return Jacobian_array
 end
 
@@ -179,35 +182,106 @@ function solve_step(jac_mat, source, sys_size, tolerance)
 end
 
 function solve_interval_IVP(RHS, C_initial, X0, interval, sys_size, max_iter, tolerance)
-    C = copy(C_initial)
-    B = build_BCs_IVP(X0, sys_size)
+    #=
+
+    GCN solution for one spectral interval
+    Where the magic actually happens
+
+    RHS is solver
+    =#
+
+    C = copy(C_initial) # initial guess from RK45/otherwise
+    B = build_BCs_IVP(X0, sys_size) # can probably be shifted to be const, B = -bl
 
     it_array = Vector{Int}(undef, max_iter)
     error_array = Vector{Float64}(undef, max_iter)
     
     error = Inf
-    for it in 1:max_iter
-        solution_array = build_solution(C, spectral_basis_gl_IVP, sys_size)
-        solution_array_gc = build_solution(C, spectral_basis_gc_IVP, sys_size)
-        RHS_array = build_RHS_array_IVP(solution_array, RHS, interval)
-        Jacobian_array_gc = build_Jacobian_array_IVP(solution_array_gc, RHS, interval)
-        JS = build_Jacobian_spectrum(Jacobian_array_gc, sys_size, "IVP")
-        Jacobian_matrix = build_jacobian_matrix(JS, sys_size)
-        S = build_RHS_term_IVP(RHS_array, Jacobian_matrix, C, sys_size)
-        #@time C_new = solve_step(Jacobian_matrix, S .+ B, sys_size, 2e-16)
-        C_new = (sys_matrix_IVP .- Jacobian_matrix)\(S .+ B)
-        error = norm(C_new .- C) / norm(C)
-        it_array[it] = it
-        error_array[it] = error
-        #println("The error is ", error)
-        if error < tolerance
-            #println("Interval solved in ", it, " iterations!")
-            resize!(it_array, it)
-            resize!(error_array, it)
-            return C_new, it_array, error_array
-        end
+    try
+        for it in 1:max_iter
+            #println("ITERATION")
+            #println(it)
+            #println(C)
+            
+            #spectral basis gl and gc are constants, the legendre and chebyshev basis sets
+            solution_array = build_solution(C, spectral_basis_gl_IVP, sys_size) # based on legendre polynomials
+            solution_array_gc = build_solution(C, spectral_basis_gc_IVP, sys_size) # based on chebyshev polynomials
+            #println("SOlution array")
+            #println(solution_array_gc)
+            #=
+            try
+                
+                if any(!isfinite, solution_array_gc)
+                    println("solution_array_gc ITS BROKEN!!!")
+                    println(solution_array_gc)
+                end
+            catch e
+                println(e)
+                prinln("IHTFP")
+            end
+            =#
 
-        C .= C_new
+            #println(maximum(solution_array))
+            #println(size(solution_array))
+            #maxi(c)
+
+            RHS_array = build_RHS_array_IVP(solution_array, RHS, interval) #array of g(x_k,tau)
+            Jacobian_array_gc = build_Jacobian_array_IVP(solution_array_gc, RHS, interval)
+
+            #if any(!isfinite, Jacobian_array_gc)
+            #    println("Jacobian_array_gc ITS BROKEN!!!")
+            #    println(Jacobian_array_gc)
+            #end
+
+            JS = build_Jacobian_spectrum(Jacobian_array_gc, sys_size, "IVP")
+            #if any(!isfinite, JS)
+            #    println("JS ITS BROKEN!!!")
+            #    println(JS)
+            #end
+            Jacobian_matrix = build_jacobian_matrix(JS, sys_size) #creates jacobian for use in LHS directly and RHS in func
+            #if any(!isfinite, Jacobian_matrix)
+            #    println("Jacobian matrix ITS BROKEN!!!")
+            #end
+            #println("Diagnostics")
+            #println(maximum(solution_array_gc))
+            #println(maximum(Jacobian_array_gc))
+            #println(maximum(JS))
+
+            S = build_RHS_term_IVP(RHS_array, Jacobian_matrix, C, sys_size) #creates combined s and Jk ck term
+            
+            #@time C_new = solve_step(Jacobian_matrix, S .+ B, sys_size, 2e-16)
+
+            C_new = (sys_matrix_IVP .- Jacobian_matrix)\(S .+ B) #Jacobian matrix  = -J^k from the paper
+            error = norm(C_new .- C) / norm(C)
+            it_array[it] = it
+            error_array[it] = error
+            #println("The error is ", error)
+            if error < tolerance
+                #println("Interval solved in ", it, " iterations!")
+                resize!(it_array, it)
+                resize!(error_array, it)
+                return C_new, it_array, error_array
+            end
+
+            C .= C_new
+            
+        end
+    catch e
+        println(e)
+        println("Could not calculate C_new")
+        println("Crashing out!")
+        println(size(sys_matrix_IVP))
+        try
+            println(Jacobian_matrix)
+            println(size(Jacobian_matrix))
+        catch e
+            println("huh what the ####")
+            println(e)
+        end
+        println(size(sys_matrix_IVP .- Jacobian_matrix))
+        println(size(S))
+        println(size(B))
+        println(size(S .+ B))
     end
 
     return C, it_array, error_array
@@ -216,7 +290,15 @@ end
 
 
 function ssolve_IVP(RHS, RHS_simple, X0, time_span, interval, order, relative_tolerance, iterative_tolerance, max_iter, h_adaptive)
+    #=
+    Solution loop for GCN Spectral Solver over the whole time period
+    This is essentially just a wrapper for calling the actual solver
+    and then incrementing the time and X0
 
+    RHS is the solver used to propagate solution
+    RHS_simple is the solver used to propagate simpler RK45 solution
+    =#
+    
     SF = 0.9
     sys_size = size(X0)[1]
     solution_coefficients = [];
@@ -230,48 +312,68 @@ function ssolve_IVP(RHS, RHS_simple, X0, time_span, interval, order, relative_to
     
     reference_interval = interval
     
-    while current_time < time_span[2]
+    #loop through the sub-intervals
+    try
+        while current_time < time_span[2]
+            if step < 1
+                t0, t1 = time_span[1], time_span[1] + reference_interval
+            else
+                t0, t1 = solution_time[end][2], solution_time[end][2] + reference_interval
+            end
+            current_time = t0;
+            if current_time >= time_span[2] || abs(current_time - time_span[2]) < epsilon
+                break
+            end
 
-        if step < 1
-            t0, t1 = time_span[1], time_span[1] + reference_interval
-        else
-            t0, t1 = solution_time[end][2], solution_time[end][2] + reference_interval
-        end
-        current_time = t0;
-        if current_time >= time_span[2] || abs(current_time - time_span[2]) < epsilon
-            break
-        end
-        coarse_problem = ODEProblem(RHS_simple, X0, (t0, t1));
-        sol = DifferentialEquations.solve(coarse_problem, Tsit5(), reltol=1e-5, abstol=1e-5, dtmax=(t1 - t0) / 5);
-        time_coarse = sol.t
-        sol_coarse = mapreduce(permutedims, vcat, sol.u)
-        C_initial = build_spectrum(time_coarse, sol_coarse);
-        if h_adaptive
-            rel_error = build_spectral_error(time_coarse, sol_coarse, C_initial, sys_size)
-            t1 = t0 + (t1 - t0) * (relative_tolerance / rel_error) ^ (1 / SF / min(order, -log10(iterative_tolerance)))
-            t1 = min(t1, time_span[2])
+            #Use a coarse RK45 with Tsit5 coefficients(better performance, newer coeffs) to initialise guess for spectral coeffss
             coarse_problem = ODEProblem(RHS_simple, X0, (t0, t1));
             sol = DifferentialEquations.solve(coarse_problem, Tsit5(), reltol=1e-5, abstol=1e-5, dtmax=(t1 - t0) / 5);
+
+            # println("Number of function evaluations from global counter: ", function_calls)
+            #println("Number of function evaluations from sol.destats: ", sol.destats.nf)
+
             time_coarse = sol.t
             sol_coarse = mapreduce(permutedims, vcat, sol.u)
-            C_initial = build_spectrum(time_coarse, sol_coarse);
-        end
-        t1 = min(t1, time_span[2])
-        C, it, error = solve_interval_IVP(RHS, C_initial, X0, (t0, t1), sys_size, max_iter, iterative_tolerance);
-        push!(solution_time, [t0, t1]);
-        push!(solution_coefficients, C);
-        push!(iteration_matrix, it);
-        push!(error_matrix, error);
-        X0 = zeros(Float64, sys_size);
-        for j in 1 : order + 1
-            X0 .+= C[(j - 1) * sys_size + 1 : j * sys_size] .* spectral_basis_gl_IVP[j, end]
-        end
-        step += 1;
-        print_progress(time_span, t0, t1, samples);
-    end
-    solution_time = reduce(hcat, solution_time)'
-    solution_coefficients = reduce(hcat, solution_coefficients)'
+            C_initial = build_spectrum(time_coarse, sol_coarse); 
 
-    return solution_time, solution_coefficients, iteration_matrix, error_matrix
-    
+            if h_adaptive
+                #println("Adapative") # warn if it goes here
+                rel_error = build_spectral_error(time_coarse, sol_coarse, C_initial, sys_size)
+                t1 = t0 + (t1 - t0) * (relative_tolerance / rel_error) ^ (1 / SF / min(order, -log10(iterative_tolerance)))
+                t1 = min(t1, time_span[2])
+
+                #same as non-adapative RK45 initialiser
+                coarse_problem = ODEProblem(RHS_simple, X0, (t0, t1));
+                sol = DifferentialEquations.solve(coarse_problem, Tsit5(), reltol=1e-5, abstol=1e-5, dtmax=(t1 - t0) / 5);
+                time_coarse = sol.t
+                sol_coarse = mapreduce(permutedims, vcat, sol.u)
+                C_initial = build_spectrum(time_coarse, sol_coarse);
+            end
+            
+            t1 = min(t1, time_span[2])
+            C, it, error = solve_interval_IVP(RHS, C_initial, X0, (t0, t1), sys_size, max_iter, iterative_tolerance);
+            push!(solution_time, [t0, t1]);
+            push!(solution_coefficients, C);
+            push!(iteration_matrix, it);
+            push!(error_matrix, error);
+            X0 = zeros(Float64, sys_size);
+
+            for j in 1 : order + 1
+                X0 .+= C[(j - 1) * sys_size + 1 : j * sys_size] .* spectral_basis_gl_IVP[j, end]
+            end
+
+            step += 1;
+        end
+
+        solution_time = reduce(hcat, solution_time)'
+        solution_coefficients = reduce(hcat, solution_coefficients)'
+
+        return solution_time, solution_coefficients, iteration_matrix, error_matrix
+
+    catch e
+        println("early finish on execution, error")
+        solution_time = reduce(hcat, solution_time)'
+        solution_coefficients = reduce(hcat, solution_coefficients)'
+        return solution_time, solution_coefficients, iteration_matrix, error_matrix
+    end
 end

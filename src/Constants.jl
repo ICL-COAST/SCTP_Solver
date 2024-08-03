@@ -1,6 +1,6 @@
 
 const norm_distance_E = 6378
-const norm_time_E = 86164.0905
+const norm_time_E = 86164.0905 #one solar day in seconds
 
 const norm_distance_S = 1.495978707 * 10 ^ 11
 const norm_time_S = 365.25 * 24 * 3600

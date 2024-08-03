@@ -5,6 +5,7 @@ global_logger(TerminalLogger())
 
 
 function Cowell(x, p, t)
+    global function_calls
 
     rx, ry, rz, vx, vy, vz = x[1], x[2], x[3], x[4], x[5], x[6]
 
@@ -35,12 +36,15 @@ function Cowell(x, p, t)
     drxdt = vx
     drydt = vy
     drzdt = vz
+    
+    function_calls += 1
 
     return [drxdt, drydt, drzdt, dvxdt, dvydt, dvzdt]
 end
 
 function Cowell_simple(x, p, t)
-
+    global function_calls
+    
     rx, ry, rz, vx, vy, vz = x[1], x[2], x[3], x[4], x[5], x[6]
 
     r_ECI = [rx, ry, rz]
@@ -56,5 +60,6 @@ function Cowell_simple(x, p, t)
     drydt = vy
     drzdt = vz
 
+    function_calls += 1
     return [drxdt, drydt, drzdt, dvxdt, dvydt, dvzdt]
 end
