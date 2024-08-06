@@ -68,7 +68,7 @@ sys_size = size(x0)[1]
 
 #create local error tolerance array
 error_order_start = 1 # fixed, never change
-error_order_stop = 6
+error_order_stop = 3
 offset = 4
 
 e_tol_array = Int.(collect(range(error_order_start,stop = error_order_stop, length = error_order_stop)))

@@ -45,7 +45,7 @@ global abs_tol             =       1e-13                           # [ER] - abso
 
 #counter for function calls, check destats.nf is accurate
 global function_calls = 0
-const orbital_period_multiplier = 20
+const orbital_period_multiplier = 30
 formulation_type = "Cowell"
 const C_gp, S_gp = import_coefficients("physical_data/EGM2008_to2190_TideFree", geopotential_order) # import EGM2008 coefficients
 
@@ -58,12 +58,15 @@ global time_span_IVP = (0.0 , orbital_period_multiplier * orbital_period); # in 
 t_span = time_span_IVP ./ norm_time_E
 sys_size = size(x0)[1]
 
-println("we here")
-
 #VERN8 benchmark
 println("Running Benchmark Solution for case 1")
-global vern8_rel_tol             =       1e-13                           # [-] - relative tolerance of the VERN8 integrator used as a benchmark 
-global vern8_abs_tol             =       1e-13                      # [ER] - absolute tolerance of the VERN8 integrator used as a benchmark
+global vern8_rel_tol             =       1e-15                           # [-] - relative tolerance of the VERN8 integrator used as a benchmark 
+global vern8_abs_tol             =       1e-15                           # [ER] - absolute tolerance of the VERN8 integrator used as a benchmark
+#t_ref_1, sol_ref_1 = Vern8_solve(x0, t_span, vern8_rel_tol, vern8_abs_tol, formulation_type);
+
+
+global t_ref_1 = []
+global sol_ref_1 = []
 
 try
     data = readdlm(string(vern8_rel_tol)*"_"*string(orbital_period_multiplier)*"_test_case_1_benchmark.txt")
@@ -72,7 +75,9 @@ try
     global sol_ref_1 = data[:, 2:7]
 
 catch
-    t_ref_1, sol_ref_1 = Vern8_solve(x0, t_span, vern8_rel_tol, vern8_abs_tol, formulation_type);
+    tref, solf = Vern8_solve(x0, t_span, vern8_rel_tol, vern8_abs_tol, formulation_type);
+    global t_ref_1 = tref
+    global sol_ref_1 = solf
     data = [t_ref_1 sol_ref_1]
     writedlm(string(vern8_rel_tol)*"_"*string(orbital_period_multiplier)*"_test_case_1_benchmark.txt", data, ' ')
 end
@@ -81,12 +86,11 @@ end
 
 #MCPI
 println("Running MCPI for case 1")
-h_adaptive      =      true
-global m_order_IVP         =       200                             # [-] - MCPI order of the polynomial approximation
-global m_interval_IVP      =       time_span_IVP[2]/200               # [seconds, multiples of solar days] - the MCPI interval
-m_spectral_iter_IVP        =       10000                               # [-] - maximum number of iterations of the MPCI propagator
-mcp_it_tol    =       1e-8                             # [-] - relative tolerance of the spectral integrator
-mcp_rel_tol   =       1e-8                                      # [-] - relative tolerance of the adaptive spectral integrator
+global m_order_IVP         =       50                            # [-] - MCPI order of the polynomial approximation
+global m_interval_IVP      =       time_span_IVP[2]/50               # [seconds, multiples of solar days] - the MCPI interval
+m_spectral_iter_IVP        =       100000                               # [-] - maximum number of iterations of the MPCI propagator
+mcp_it_tol    =       1e-9                             # [-] - relative tolerance of the spectral integrator
+mcp_rel_tol   =       1e-9                                      # [-] - relative tolerance of the adaptive spectral integrator
 global function_calls = 0
 
 t_mcp_1, c_mcp_1, i_mcp_1, e_mcp_1 = MCPI_solve(x0, t_span, m_interval_IVP / norm_time_E, mcp_it_tol, mcp_rel_tol, m_spectral_iter_IVP, formulation_type)
@@ -97,13 +101,14 @@ println(mcpi_f)
 
 #GCN
 println("Running GCN for case 1")
-global s_order_IVP         =      60                             # [-] - MCPI order of the polynomial approximation
-global s_interval_IVP      =      time_span_IVP[2]/60               # [seconds, multiples of solar days] - the GCN interval
-s_spectral_iter_IVP        =      10000                               # [-] - maximum number of iterations of the GCN propagator
-gcn_it_tol    =       1e-5                             # [-] - relative tolerance of the spectral integrator
-gcn_rel_tol   =       1e-5                                      # [-] - relative tolerance of the adaptive spectral integrator
-global function_calls = 0
+global s_order_IVP         =      20                             # [-] - MCPI order of the polynomial approximation
+global s_interval_IVP      =      time_span_IVP[2]/30               # [seconds, multiples of solar days] - the GCN interval
+s_spectral_iter_IVP        =      100000                               # [-] - maximum number of iterations of the GCN propagator
+gcn_it_tol    =       1e-8                            # [-] - relative tolerance of the spectral integrator
+gcn_rel_tol   =       gcn_it_tol                                     # [-] - relative tolerance of the adaptive spectral integrator
 
+global function_calls = 0
+global call_structure = zeros(1,3)
 #intialise basis functions
 #create legendere and chebyshev based quadrature nodes and weights
 const gl_nodes_IVP, gl_weights_IVP = build_quadrature(s_order_IVP, "Legendre");
@@ -135,15 +140,11 @@ t_dop_1, sol_dop_1 = DOPRI853_solve(x0, t_span, dop_rel_tol, dop_abs_tol, formul
 dop_f = function_calls
 spec_dop_time = @belapsed $DOPRI853_solve(x0, t_span, dop_rel_tol, dop_abs_tol, $formulation_type);
 
-#t_dop_1, sol_dop_1 = Vern8_solve(x0, t_span, dop_rel_tol, dop_abs_tol, formulation_type);
-#dop_f = function_calls
-#spec_dop_time = @belapsed $Vern8_solve(x0, t_span, dop_rel_tol, dop_abs_tol, $formulation_type);
-
 
 #RK45 with TSIT
 println("Running RK45 for case 1")
-global rk45_rel_tol             =       1e-8                           # [-] - relative tolerance of the DOPRI853 integrator
-global rk45_abs_tol             =       1e-8                           # [ER] - absolute tolerance of the DOPRI853 integrator
+global rk45_rel_tol             =       1e-11                           # [-] - relative tolerance of the DOPRI853 integrator
+global rk45_abs_tol             =       1e-11                           # [ER] - absolute tolerance of the DOPRI853 integrator
 global function_calls = 0
 
 t_rk_1, sol_rk_1 = RK45_solve(x0, t_span, rk45_rel_tol, rk45_abs_tol, formulation_type);
@@ -182,7 +183,6 @@ PyPlot.ylabel("Deviation /km")
 PyPlot.title("Plot of Error for case 1, orbits:"*string(orbital_period_multiplier))
 PyPlot.legend()
 
-
 #make bar chart of cpu times and function calls
 
 solvers = ["DOP853","RK45","MCPI","GCN"]
@@ -214,7 +214,6 @@ ax1.legend(loc="upper left")
 ax2.legend(loc="upper right")
 
 # Display the plot
-
 
 
 #=

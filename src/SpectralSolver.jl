@@ -286,8 +286,99 @@ function solve_interval_IVP(RHS, C_initial, X0, interval, sys_size, max_iter, to
 
     return C, it_array, error_array
 end
+#=
+function ssolve_IVP(RHS, RHS_simple, X0, time_span, interval, order, relative_tolerance, iterative_tolerance, max_iter, h_adaptive)
+    #=
+    Solution loop for GCN Spectral Solver over the whole time period
+    This is essentially just a wrapper for calling the actual solver
+    and then incrementing the time and X0
+
+    RHS is the solver used to propagate solution
+    RHS_simple is the solver used to propagate simpler RK45 solution
+    =#
+    
+    SF = 0.9
+    sys_size = size(X0)[1]
+    solution_coefficients = [];
+    solution_time = [];
+    iteration_matrix = [];
+    error_matrix = [];
+    current_time = time_span[1]
+    step = 0
+    samples = 10
+    epsilon = 1e-8
+    
+    reference_interval = interval
+    
+    #loop through the sub-intervals
+    try
+        while current_time < time_span[2]
+            if step < 1
+                t0, t1 = time_span[1], time_span[1] + reference_interval
+                coarse_problem = ODEProblem(RHS_simple, X0, (t0, t1));
+                sol = DifferentialEquations.solve(coarse_problem, Tsit5(), reltol=1e-5, abstol=1e-5, dtmax=(t1 - t0) / 5);
+                time_coarse = sol.t
+                sol_coarse = mapreduce(permutedims, vcat, sol.u)
+                C_initial = build_spectrum(time_coarse, sol_coarse); 
+            else
+                t0, t1 = solution_time[end][2], solution_time[end][2] + reference_interval
+                C_initial = C
+            end
+
+            current_time = t0;
+            if current_time >= time_span[2] || abs(current_time - time_span[2]) < epsilon
+                break
+            end
+
+            rk45loop = function_calls
+            #Use a coarse RK45 with Tsit5 coefficients(better performance, newer coeffs) to initialise guess for spectral coeffss
+            
+            rk45loop = function_calls - rk45loop
+
+            global call_structure[end,2] += rk45loop
 
 
+            if h_adaptive
+                println("Adapative, not permitted") # warn if it goes here
+                break
+            end
+            
+            t1 = min(t1, time_span[2])
+
+            iterative_solution_loop = function_calls
+
+            C, it, error = solve_interval_IVP(RHS, C_initial, X0, (t0, t1), sys_size, max_iter, iterative_tolerance);
+
+            iterative_solution_loop = function_calls - iterative_solution_loop
+
+            global call_structure[end,3] += iterative_solution_loop
+
+            push!(solution_time, [t0, t1]);
+            push!(solution_coefficients, C);
+            push!(iteration_matrix, it);
+            push!(error_matrix, error);
+            X0 = zeros(Float64, sys_size);
+
+            for j in 1 : order + 1
+                X0 .+= C[(j - 1) * sys_size + 1 : j * sys_size] .* spectral_basis_gl_IVP[j, end]
+            end
+
+            step += 1;
+        end
+
+        solution_time = reduce(hcat, solution_time)'
+        solution_coefficients = reduce(hcat, solution_coefficients)'
+
+        return solution_time, solution_coefficients, iteration_matrix, error_matrix
+
+    catch e
+        println("early finish on execution, error")
+        solution_time = reduce(hcat, solution_time)'
+        solution_coefficients = reduce(hcat, solution_coefficients)'
+        return solution_time, solution_coefficients, iteration_matrix, error_matrix
+    end
+end
+=#
 
 function ssolve_IVP(RHS, RHS_simple, X0, time_span, interval, order, relative_tolerance, iterative_tolerance, max_iter, h_adaptive)
     #=
@@ -325,12 +416,14 @@ function ssolve_IVP(RHS, RHS_simple, X0, time_span, interval, order, relative_to
                 break
             end
 
+            rk45loop = function_calls
             #Use a coarse RK45 with Tsit5 coefficients(better performance, newer coeffs) to initialise guess for spectral coeffss
             coarse_problem = ODEProblem(RHS_simple, X0, (t0, t1));
             sol = DifferentialEquations.solve(coarse_problem, Tsit5(), reltol=1e-5, abstol=1e-5, dtmax=(t1 - t0) / 5);
 
-            # println("Number of function evaluations from global counter: ", function_calls)
-            #println("Number of function evaluations from sol.destats: ", sol.destats.nf)
+            rk45loop = function_calls - rk45loop
+
+            global call_structure[end,2] += rk45loop
 
             time_coarse = sol.t
             sol_coarse = mapreduce(permutedims, vcat, sol.u)
@@ -351,7 +444,15 @@ function ssolve_IVP(RHS, RHS_simple, X0, time_span, interval, order, relative_to
             end
             
             t1 = min(t1, time_span[2])
+
+            iterative_solution_loop = function_calls
+
             C, it, error = solve_interval_IVP(RHS, C_initial, X0, (t0, t1), sys_size, max_iter, iterative_tolerance);
+
+            iterative_solution_loop = function_calls - iterative_solution_loop
+
+            global call_structure[end,3] += iterative_solution_loop
+
             push!(solution_time, [t0, t1]);
             push!(solution_coefficients, C);
             push!(iteration_matrix, it);
