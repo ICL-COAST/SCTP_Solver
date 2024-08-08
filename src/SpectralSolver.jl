@@ -136,18 +136,20 @@ end
 
 function build_Jacobian_array_IVP(solution, RHS, interval)
     #holds the array of jacobian matrices for each of the integration nodes
+    #source of function calls
 
-    #println("inside build jacobian array ivp")
-    #println(size(solution))
     int_order, sys_size = size(solution)
     Jacobian_array = zeros(Float64, int_order, sys_size, sys_size)
-    Threads.@threads for i in 1 : int_order
+
+
+    
+    Threads.@threads for i in 1 : int_order #generate 6x6 matrix, m times
         Jacobian_array[i, :, :] .= Jacobian_IVP(solution[i, :], RHS, interval, gc_nodes_IVP[i])
     end
-    #println("Jacobian array")
-    #println(size(Jacobian_array))
+
     return Jacobian_array
 end
+
 
 
 function print_progress(time_span, t0, t1, samples)
@@ -199,63 +201,37 @@ function solve_interval_IVP(RHS, C_initial, X0, interval, sys_size, max_iter, to
     error = Inf
     try
         for it in 1:max_iter
-            #println("ITERATION")
-            #println(it)
-            #println(C)
-            
+   
             #spectral basis gl and gc are constants, the legendre and chebyshev basis sets
             solution_array = build_solution(C, spectral_basis_gl_IVP, sys_size) # based on legendre polynomials
             solution_array_gc = build_solution(C, spectral_basis_gc_IVP, sys_size) # based on chebyshev polynomials
-            #println("SOlution array")
-            #println(solution_array_gc)
-            #=
-            try
-                
-                if any(!isfinite, solution_array_gc)
-                    println("solution_array_gc ITS BROKEN!!!")
-                    println(solution_array_gc)
-                end
-            catch e
-                println(e)
-                prinln("IHTFP")
-            end
-            =#
-
-            #println(maximum(solution_array))
-            #println(size(solution_array))
-            #maxi(c)
-
-            RHS_array = build_RHS_array_IVP(solution_array, RHS, interval) #array of g(x_k,tau)
-            Jacobian_array_gc = build_Jacobian_array_IVP(solution_array_gc, RHS, interval)
-
-            #if any(!isfinite, Jacobian_array_gc)
-            #    println("Jacobian_array_gc ITS BROKEN!!!")
-            #    println(Jacobian_array_gc)
-            #end
-
-            JS = build_Jacobian_spectrum(Jacobian_array_gc, sys_size, "IVP")
-            #if any(!isfinite, JS)
-            #    println("JS ITS BROKEN!!!")
-            #    println(JS)
-            #end
-            Jacobian_matrix = build_jacobian_matrix(JS, sys_size) #creates jacobian for use in LHS directly and RHS in func
-            #if any(!isfinite, Jacobian_matrix)
-            #    println("Jacobian matrix ITS BROKEN!!!")
-            #end
-            #println("Diagnostics")
-            #println(maximum(solution_array_gc))
-            #println(maximum(Jacobian_array_gc))
-            #println(maximum(JS))
-
-            S = build_RHS_term_IVP(RHS_array, Jacobian_matrix, C, sys_size) #creates combined s and Jk ck term
             
-            #@time C_new = solve_step(Jacobian_matrix, S .+ B, sys_size, 2e-16)
+            #function calls contained here
+            s_matrix_loop = function_calls
+            RHS_array = build_RHS_array_IVP(solution_array, RHS, interval) #array of g(x_k,tau), used in s
+            s_matrix_loop = function_calls - s_matrix_loop
+            global call_structure[end,2] += s_matrix_loop
+
+            j_matrix_loop = function_calls
+            Jacobian_array_gc = build_Jacobian_array_IVP(solution_array_gc, RHS, interval) #also calls function 
+            j_matrix_loop = function_calls - j_matrix_loop
+            global call_structure[end,3] += j_matrix_loop
+
+            #function calls stop
+
+            JS = build_Jacobian_spectrum(Jacobian_array_gc, sys_size, "IVP") #no function calls 
+            
+            #jacobian matrix calculation
+            Jacobian_matrix = build_jacobian_matrix(JS, sys_size) #creates jacobian for use in LHS directly and RHS in func, doesn't acc directly call function
+
+            #system matrix, jac already calculated, any func calls here are for s only
+            S = build_RHS_term_IVP(RHS_array, Jacobian_matrix, C, sys_size) #creates combined s and Jk ck term, no function calls
+            
 
             C_new = (sys_matrix_IVP .- Jacobian_matrix)\(S .+ B) #Jacobian matrix  = -J^k from the paper
             error = norm(C_new .- C) / norm(C)
             it_array[it] = it
             error_array[it] = error
-            #println("The error is ", error)
             if error < tolerance
                 #println("Interval solved in ", it, " iterations!")
                 resize!(it_array, it)
@@ -423,7 +399,7 @@ function ssolve_IVP(RHS, RHS_simple, X0, time_span, interval, order, relative_to
 
             rk45loop = function_calls - rk45loop
 
-            global call_structure[end,2] += rk45loop
+            global call_structure[end,1] += rk45loop
 
             time_coarse = sol.t
             sol_coarse = mapreduce(permutedims, vcat, sol.u)
@@ -445,14 +421,11 @@ function ssolve_IVP(RHS, RHS_simple, X0, time_span, interval, order, relative_to
             
             t1 = min(t1, time_span[2])
 
-            iterative_solution_loop = function_calls
+            
 
             C, it, error = solve_interval_IVP(RHS, C_initial, X0, (t0, t1), sys_size, max_iter, iterative_tolerance);
 
-            iterative_solution_loop = function_calls - iterative_solution_loop
-
-            global call_structure[end,3] += iterative_solution_loop
-
+            
             push!(solution_time, [t0, t1]);
             push!(solution_coefficients, C);
             push!(iteration_matrix, it);

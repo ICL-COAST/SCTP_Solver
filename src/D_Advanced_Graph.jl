@@ -68,8 +68,8 @@ sys_size = size(x0)[1]
 
 #create local error tolerance array
 error_order_start = 1 # fixed, never change
-error_order_stop = 7
-offset = 5
+error_order_stop = 6
+offset = 4
 
 e_tol_array = Int.(collect(range(error_order_start,stop = error_order_stop, length = error_order_stop)))
 
@@ -131,6 +131,7 @@ global rk45_array = zeros(maximum([error_order_stop,speclen]),3 + ordlen + offse
 #create finite difference method performance curves
 #for DOPRI853, for RK45 with tsit, for VERN8
 
+#=
 
 for i = e_tol_array
     global local_rel_tol = 10.0 ^(-i-offset)
@@ -170,6 +171,8 @@ for i = e_tol_array
 
 end
 
+=#
+
 #this section plots a series of curves where the gcn error tolerance is fixed to machine precision e-15
 #each curve represents a fixed order of the method ranging from ~10 to 100
 #the thing we are varying here is the number of spectral intervals, between 10 and 100
@@ -180,7 +183,17 @@ global s_spectral_iter_IVP = 100000;
 global h_adaptive = false
 global local_rel_tol = 1e-11
 
-global call_struct_mat = zeros(1,6)
+global call_struct_mat = zeros(1,8)
+#first column is rk45 calls
+#2nd column is function calls for S
+#3rd column is jacobian function calls
+
+#4th column is spectral interval length
+#5th column is number of spectral intervals
+#6th column is corresponding error
+
+#7th column is the total number of method iterations
+#8th column is method order
 
 for method_order_i = (1 : ordlen) .+ offset_g
     println("Testing method with order"*string(method_order_i * order_mult))
@@ -204,15 +217,19 @@ for method_order_i = (1 : ordlen) .+ offset_g
         global sys_matrix_IVP = build_system_matrix_IVP(sys_size); # P - Br returned
         global sys_matrix_IVP_inv = inv(sys_matrix_IVP); # pre-compute P - Br inverse
 
-
-        global call_structure[i, 1] = function_calls
     
         t_gcn_1, c_gcn_1, i_gcn_1, e_gcn_1 = Spectral_solve(x0, t_span, s_interval_IVP / norm_time_E, local_rel_tol, local_rel_tol, s_spectral_iter_IVP, formulation_type)
-        global call_structure[i,2:3] = call_structure[end,2:3]
-
-        global rk45_array[spectral_interval_i,3 + method_order_i - offset_g] = call_structure[end,2]
-        # Append the new row to the matrix
+        global call_structure[i,1:3] = call_structure[end,1:3]
         
+        itrnum = 0
+
+        #calculate total number of iterations
+        for il = 1:length(i_gcn_1)
+            itrnum += maximum(i_gcn_1[il])
+        end
+
+        global rk45_array[spectral_interval_i,3 + method_order_i - offset_g] = call_structure[end,1]
+        # Append the new row to the matrix
 
         global fc_array[spectral_interval_i,3 + method_order_i - offset_g] = function_calls
 
@@ -221,15 +238,12 @@ for method_order_i = (1 : ordlen) .+ offset_g
    
         global dev_array[spectral_interval_i,3 + method_order_i- offset_g] = abs(gcn_e_1[2].*norm_distance_E)
 
-        a = hcat(call_structure,[s_interval_IVP ((spectral_interval_i+offset_int)*spec_mult) dev_array[spectral_interval_i,3 + method_order_i- offset_g]])
+        a = hcat(call_structure,[s_interval_IVP ((spectral_interval_i+offset_int)*spec_mult) dev_array[spectral_interval_i,3 + method_order_i- offset_g] itrnum s_order_IVP])
         global call_struct_mat = vcat(call_struct_mat, a)
 
         println("Finishing analysing interval length,"*string(((spectral_interval_i+offset_int)*spec_mult)))
     end
 end
-
-
-
 
 e_tol_array = Float64.(e_tol_array)
 dev_array .= ifelse.(dev_array .== 0, NaN, dev_array)
@@ -241,13 +255,13 @@ fc_array .= ifelse.(fc_array .== 0, NaN, fc_array)
 
 PyPlot.figure()
 
-PyPlot.plot(dev_array[:,1], fc_array[:,1], marker="o", linestyle="-", label="DOPRI853")
-PyPlot.plot(dev_array[:,2], fc_array[:,2], marker="o", linestyle="-", label="VERN8")
-PyPlot.plot(dev_array[:,3], fc_array[:,3], marker="o", linestyle="-", label="RK45 - tsit")
+PyPlot.plot(dev_array[:,1], fc_array[:,1], marker="o", linestyle="", label="DOPRI853")
+PyPlot.plot(dev_array[:,2], fc_array[:,2], marker="o", linestyle="", label="VERN8")
+PyPlot.plot(dev_array[:,3], fc_array[:,3], marker="o", linestyle="", label="RK45 - tsit")
 
 for i = 4 : ordlen + 3
     labels = "GCN order"*string(order_mult*(i-3+offset_g))
-    PyPlot.plot(dev_array[:,i], fc_array[:,i], marker = "o", linestyle = "-", label = labels)
+    PyPlot.plot(dev_array[:,i], fc_array[:,i], marker = "x", linestyle = "", label = labels)
 end
 
 PyPlot.xscale("log")
@@ -263,7 +277,7 @@ PyPlot.legend()
 PyPlot.figure()
 for i = 4 : ordlen + 3
     labels = "GCN order"*string(order_mult*(i-3+offset_g))
-    PyPlot.plot(dev_array[:,i], fc_array[:,i], marker = "o", linestyle = "-", label = labels)
+    PyPlot.plot(dev_array[:,i], fc_array[:,i], marker = "x", linestyle = "", label = labels)
 end
 
 PyPlot.xscale("log")
@@ -277,7 +291,7 @@ PyPlot.legend()
 
 #create rk45 ratio plot
 
-ratios = call_struct_mat[:,2]./call_struct_mat[:,3]
+ratios = call_struct_mat[:,1]./(call_struct_mat[:,1]+call_struct_mat[:,3]+call_struct_mat[:,2])
 
 PyPlot.figure()
 PyPlot.plot(call_struct_mat[:,6], ratios, marker = "x", linestyle = " ")
@@ -290,3 +304,12 @@ PyPlot.title("Ratio of Init Calls to Main Calls, GCN rel tol"*string(local_rel_t
 
 println("Interval splits analysed:")
 println((1 : speclen.+offset_int).*spec_mult)
+
+#print out the number of function calls for s and the jacobian, scaled by the number of iterations
+
+it_scale_mat_exp = call_struct_mat[:,2:3] ./ call_struct_mat[:,7] 
+fes_per_iteration_exp = it_scale_mat_exp[:,1] .+ it_scale_mat_exp[:,2]
+
+it_scale_mat_theo = (2*sys_size + 1) .* call_struct_mat[:,8] .+ 1
+
+delta = fes_per_iteration_exp - it_scale_mat_theo 

@@ -228,6 +228,8 @@ function Jacobian_IVP(solution, RHS, interval, tau)
         Xp[i, :] = copy(solution)
         Xp[i, i] += eps
         Xm[i, i] -= eps
+
+        #finite difference for differentiation for finding jacobian
         Jacobian_array[:, i] .= 
             ((t1 - t0) / 2 * (RHS(Xp[i, :], [], (t1 - t0) / 2 .* tau + (t1 + t0) / 2) -
              RHS(Xm[i, :], [], (t1 - t0) / 2 .* tau + (t1 + t0) / 2))) / (eps * 2)
