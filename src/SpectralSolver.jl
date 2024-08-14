@@ -286,12 +286,19 @@ function solve_interval_IVP(RHS, C_initial, X0, interval, sys_size, max_iter, to
     
     error = Inf
     for it in 1:max_iter
-        solution_array = build_solution(C, spectral_basis_gl_IVP, sys_size)
-        solution_array_gc = build_solution(C, spectral_basis_gc_IVP, sys_size)
+        # Evaluate solution at GL and GC nodes
+        solution_array = build_solution(C, spectral_basis_gl_IVP, sys_size) # spectral_basis_gl_IVP: Chebyshev basis evaluated on GL nodes
+        solution_array_gc = build_solution(C, spectral_basis_gc_IVP, sys_size) # spectral_basis_gc_IVP: Chebyshev basis evaluated on GC nodes
+
+        # Evaluate RHS on GL nodes and Jacobian on GC nodes
         RHS_array = build_RHS_array_IVP(solution_array, RHS, interval)
         Jacobian_array_gc = build_Jacobian_array_IVP(solution_array_gc, RHS, interval)
+
+        # Assemble Jacobian matrix
         JS = build_Jacobian_spectrum(Jacobian_array_gc, sys_size, "IVP")
         Jacobian_matrix = build_jacobian_matrix(JS, sys_size)
+
+        # S = source + Jac*coefs (see eq. 16)
         S = build_RHS_term_IVP(RHS_array, Jacobian_matrix, C, sys_size)
         #@time C_new = solve_step(Jacobian_matrix, S .+ B, sys_size, 2e-16)
         C_new = (sys_matrix_IVP .- Jacobian_matrix)\(S .+ B)

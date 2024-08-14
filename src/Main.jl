@@ -32,7 +32,7 @@ t_span = time_span_IVP ./ norm_time_E
 
 sys_size = size(x0)[1]
 
-const C_gp, S_gp = import_coefficients("physics_data/EGM2008_to2190_TideFree", geopotential_order) # import EGM2008 coefficients
+const C_gp, S_gp = import_coefficients("physical_data/EGM2008_to2190_TideFree", geopotential_order) # import EGM2008 coefficients
 const gl_nodes_IVP, gl_weights_IVP = build_quadrature(s_order_IVP, "Legendre");
 const gc_nodes_IVP, gc_weights_IVP = build_quadrature(s_order_IVP, "Chebyshev");
 const spectral_basis_gl_IVP, spectral_basis_deriv_gl_IVP, spectral_basis_deriv2_gl_IVP = create_basis_set(gl_nodes_IVP, s_order_IVP, "Chebyshev");

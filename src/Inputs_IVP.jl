@@ -26,7 +26,7 @@ aero_drag       =   true           # include atmospheric drag perturbations
 solar_pressure  =   false           # include solar radiation pressure perturbations
 third_body      =   false           # include third-body perturbations from sun and moon
 
-geopotential_order      =       20                 # order of harmonics in geopotential expansion
+geopotential_order      =       2                 # order of harmonics in geopotential expansion
 atmospheric_model       =       "NRLMSISE00"        # atmospheric model to be used ("exponential", "NRLMSISE00")
 
 
