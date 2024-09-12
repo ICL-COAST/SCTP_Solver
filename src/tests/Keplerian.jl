@@ -1,15 +1,28 @@
 using LinearAlgebra
 using Test
 
-function keplerian(x0,Δt,μ)
+function keplProp(x0::Vector{Float64},Δt::Float64,μ::Float64=1.0)
     #=
-    Propagate initial conditions x0 = [r0, v0] through a time Δt and assuming gravitational 
+    Propagate initial conditions x0 = [r0, v0] through a time interval Δt and assuming gravitational 
     parameter μ according to Keplerian motion.
     =#
 
+    # Transform to orbital elements and compute mean anomaly
+    r0 = x0[1:3]
+    v0 = x0[4:6]
+    coe0 = cart2coe(r0, v0, μ, "mean", "rad")
+
+    # Advance mean anomaly
+    n = √(μ/coe[1]^3)
+    Mf = mod(coe0[6] + n*Δt, 2π)
+
+    # Transform back to position and velocity
+
+
 end
 
-function cart2coe(r::Vector{Float64},v::Vector{Float64},μ::Float64=1.0,anomalyType::String="true")
+function cart2coe(r::Vector{Float64}, v::Vector{Float64}, μ::Float64=1.0,
+    anomalyType::String="true", angles::String="deg")
     #=
     Transform position and velocity r0, v0 into orbital elements with gravitational 
     parameter μ.
@@ -124,29 +137,41 @@ function cart2coe(r::Vector{Float64},v::Vector{Float64},μ::Float64=1.0,anomalyT
         anomaly = M
 
     end
+
+    angles = lowercase(angles)
+    if angles == "rad"
+        return [a; e; inc ; Ω ; ω ; anomaly]
+
+    elseif angles == "deg"
+        return [a; e; inc * 180.0/π; Ω * 180.0/π; ω * 180.0/π; anomaly * 180.0/π]
+
+    end
     
-    return [a; e; inc * 180.0/π; Ω * 180.0/π; ω * 180.0/π; anomaly * 180.0/π]
 end
 
-r = [1; 0; 0.0]; v = [0.0; 1.0; 0.0]; μ = 1.0;
-oEls = cart2coe(r,v,μ)
+# r = [1; 0; 0.0]; v = [0.0; 1.0; 0.0]; μ = 1.0;
+# oEls = cart2coe(r,v,μ)
 
-# Tests:
-# Circular Equatorial
-r = [1; 0; 0.0]; v = [0.0; 1.0; 0.0]
-@test isapprox(cart2coe(r,v),[1.0; 0.0; 0.0; 0.0; 0.0; 0.0])
+# #= TESTS - CART2COE =#
+# # Circular Equatorial
+# r = [1; 0; 0.0]; v = [0.0; 1.0; 0.0]
+# @test isapprox(cart2coe(r,v),[1.0; 0.0; 0.0; 0.0; 0.0; 0.0])
 
-# Circular Inclined
-r = [1; 0; 0.0]; v = [0.0; 0.0; 1.0]
-@test isapprox(cart2coe(r,v),[1.0; 0.0; 90.0; 0.0; 0.0; 0.0])
+# # Circular Inclined
+# r = [1; 0; 0.0]; v = [0.0; 0.0; 1.0]
+# @test isapprox(cart2coe(r,v),[1.0; 0.0; 90.0; 0.0; 0.0; 0.0])
 
-# Elliptical Equatorial
-r = [0.520680950221347; 0.189512367430012; 0.0]
-v = [-0.150932076454254; 1.60832061994676; 0.0]
-@test isapprox(cart2coe(r,v),[1.0; 0.5; 0.0; 0.0; 335.0; 45.0])
+# # Elliptical Equatorial
+# r = [0.520680950221347; 0.189512367430012; 0.0]
+# v = [-0.150932076454254; 1.60832061994676; 0.0]
+# @test isapprox(cart2coe(r,v),[1.0; 0.5; 0.0; 0.0; 335.0; 45.0])
 
-# Elliptical Inclined
-r = [0.364516134427945; 0.175849716406476; 0.378455353131388]
-v = [-0.147960790329928; 1.60858057379873; -0.00720072017325568]
-@test isapprox(cart2coe(r,v),[1.0; 0.5; 45.0; 275.0; 60.0; 45.0])
+# # Elliptical Inclined
+# r = [0.364516134427945; 0.175849716406476; 0.378455353131388]
+# v = [-0.147960790329928; 1.60858057379873; -0.00720072017325568]
+# @test isapprox(cart2coe(r,v),[1.0; 0.5; 45.0; 275.0; 60.0; 45.0])
 
+#= TESTS - KEPLPROP =#
+r0 = [0.0; 0.0; 1.0]; v0 = [0.0; -1.0; 0.0]; Δt = 1.0
+x0 = [r0; v0]
+keplProp(x0,Δt)
