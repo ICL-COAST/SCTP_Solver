@@ -13,12 +13,14 @@ function keplProp(x0::Vector{Float64},Δt::Float64,μ::Float64=1.0)
     coe0 = cart2coe(r0, v0, μ, "mean", "rad")
 
     # Advance mean anomaly
-    n = √(μ/coe[1]^3)
+    n = √(μ/coe0[1]^3)
     Mf = mod(coe0[6] + n*Δt, 2π)
-
+    coef = [coe0[1:5]; Mf]
+    
     # Transform back to position and velocity
+    rf, vf = coe2cart(coef, μ, "mean", "rad")
 
-
+    return [rf[:]; vf[:]]
 end
 
 function cart2coe(r::Vector{Float64}, v::Vector{Float64}, μ::Float64=1.0,
@@ -244,9 +246,9 @@ end
 # @test isapprox(cart2coe(r,v),[1.0; 0.5; 45.0; 275.0; 60.0; 45.0])
 
 #= TESTS - KEPLPROP =#
-# r0 = [0.0; 0.0; 1.0]; v0 = [0.0; -1.0; 0.0]; Δt = 1.0
-# x0 = [r0; v0]
-# keplProp(x0,Δt)
+r0 = [0.0; 0.0; 1.0]; v0 = [0.0; -1.0; 0.0]; Δt = 1.0
+x0 = [r0; v0]
+keplProp(x0,Δt)
 
 #= TESTS - COE2CART =#
 coe = [1.0; 0.2; 90.0; 0.0; 0.0; 45.0]
