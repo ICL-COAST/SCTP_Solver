@@ -149,6 +149,78 @@ function cart2coe(r::Vector{Float64}, v::Vector{Float64}, μ::Float64=1.0,
     
 end
 
+function coe2cart(coe::Vector{Float64}, μ::Float64=1.0, 
+    anomalyType::String="true", angles::String="deg")
+    # Copy orbital elements and convert to radians
+    a = coe[1]; e = coe[2];
+    p = a * (1.0 - e^2)
+
+    # Bring all angles to rad if they're in degrees
+    if angles == "deg"
+        inc = coe[3] * π/180.0; Ω = coe[4] * π/180.0; ω = coe[5] * π/180.0
+        anomaly = coe[6] * π/180.0
+
+    elseif angles == "rad"
+        inc = coe[3] ; Ω = coe[4] ; ω = coe[5]; anomaly = coe[6]
+
+    end
+
+    # Bring anomaly to [0, 2π].
+    anomaly = mod(anomaly,2π)
+
+    # True anomaly
+    anomalyType = lowercase(anomalyType)
+    if anomalyType == "mean"
+        M = anomaly
+        sM = sin(M)
+
+        # Solve Kepler's equation in the elliptical case (Battin, 1999).
+        # Initial guess: Battin, 1999, Eq. 5.4
+        E = M + (e*sM) / (1.0 - sin(M + e) + sM)
+        y = M - ( E - e*sin(E) )
+        zero = eps(typeof(y))
+        iter = 0; maxIter = 10
+        while abs(y) ≥ zero && iter ≤ maxIter
+            # Current residual and derivative
+            dydE = 1.0 - e*cos(E)
+
+            # Iteration on E
+            E = E + y/dydE
+            y = M - ( E - e*sin(E) )
+            iter += 1
+            
+        end
+
+        ν = atan(sin(E) * √(1.0 - e^2), cos(E) - e)
+
+    elseif anomalyType == "eccentric"
+        E = anomaly
+        ν = atan2(sin(E) * √(1.0 - e^2), cos(E) - e)
+
+    elseif anomalyType == "true"
+        ν = anomaly
+
+    end
+
+    sν = sin(ν); cν = cos(ν)
+
+    # Position and velocity in perifocal frame
+    rP = p/(1.0 + e*cν) .* [cν; sν; 0.0]
+    vP = √(μ/p) .* [-sν; e + cν; 0.0]
+
+    # Rotate to inertial frame
+    si = sin(inc); ci = cos(inc); sΩ = sin(Ω); cΩ = cos(Ω); sω = sin(ω); cω = cos(ω)
+    R = [
+        (cΩ * cω - sΩ * sω * ci) (-cΩ * sω - sΩ * cω * ci) (sΩ * si);
+        (sΩ * cω + cΩ * sω * ci) (-sΩ * sω + cΩ * cω * ci) (-cΩ * si);
+        (sω*si)                  (cω*si)                   ci
+    ]
+    r = R * rP
+    v = R * vP
+
+    return r, v
+end
+
 # r = [1; 0; 0.0]; v = [0.0; 1.0; 0.0]; μ = 1.0;
 # oEls = cart2coe(r,v,μ)
 
@@ -172,6 +244,12 @@ end
 # @test isapprox(cart2coe(r,v),[1.0; 0.5; 45.0; 275.0; 60.0; 45.0])
 
 #= TESTS - KEPLPROP =#
-r0 = [0.0; 0.0; 1.0]; v0 = [0.0; -1.0; 0.0]; Δt = 1.0
-x0 = [r0; v0]
-keplProp(x0,Δt)
+# r0 = [0.0; 0.0; 1.0]; v0 = [0.0; -1.0; 0.0]; Δt = 1.0
+# x0 = [r0; v0]
+# keplProp(x0,Δt)
+
+#= TESTS - COE2CART =#
+coe = [1.0; 0.2; 90.0; 0.0; 0.0; 45.0]
+r, v = coe2cart(coe, 1.0, "mean", "deg")
+@test isapprox(r, [0.383448272723395; 0; 0.795741533749398] )
+@test isapprox(v, [-0.919439363740351; 0.0; 0.647179359704581] )
