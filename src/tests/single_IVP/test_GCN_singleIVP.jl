@@ -18,4 +18,5 @@ x0 = [a / DU, e, i * π / 180, RAAN * π / 180, omega * π / 180, theta * π / 1
 t_span = time_span_IVP ./ TU
 sys_size = size(x0)[1]  # = N in the GCN paper. Size of the state.
 
-
+# Store const's
+const C_gp, S_gp = import_coefficients(coefs_path, geopotential_order) # import EGM2008 coefficients

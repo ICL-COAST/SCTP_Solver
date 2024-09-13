@@ -30,6 +30,8 @@ third_body      =   false           # include third-body perturbations from sun 
 geopotential_order      =       2                 # order of harmonics in geopotential expansion
 atmospheric_model       =       "NRLMSISE00"        # atmospheric model to be used ("exponential", "NRLMSISE00")
 
+coefs_path = "/Users/davide/Documents/Research/SCTP_Solver/physical_data/EGM2008_to2190_TideFree"
+
 
 # Spacecraft Parameters :
 
