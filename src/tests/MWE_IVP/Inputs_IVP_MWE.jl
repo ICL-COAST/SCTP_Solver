@@ -45,7 +45,7 @@ spacecraft_Cd       =   2.2             # [-] - include solar radiation pressure
 
 global time_span_IVP       =       (0.0 , 2.0) .* 86400.0        # [seconds] - total integration time time_span
 global s_interval_IVP      =       0.5 * 86400.0                  # [seconds] - the spectral time interval
-global s_order_IVP         =       50                             # [-] - spectral order of the polynomial approximation
+global M                   =       300                             # [-] - GCN order of the polynomial approximation
 global m_order_IVP         =       50                             # [-] - MCPI order of the polynomial approximation
 global rel_tol             =       1e-13                           # [-] - relative tolerance of the RK45 integrator
 global abs_tol             =       1e-13                           # [ER] - absolute tolerance of the RK45 integrator  
