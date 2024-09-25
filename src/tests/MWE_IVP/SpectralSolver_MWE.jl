@@ -2,8 +2,61 @@ module SpectralSolver
 
     using LinearAlgebra
 
-    export build_system_matrix_IVP, PRMatrix
+    export PRMatrix
+    
+    function PRMatrix(N::Int, M::Int)
+        #= Initializes the matrix P - R for the Newton iterations. 
+        
+        Inputs:
+        - N: state vector dimension
+        - M: order of the method
 
+        Returns two N(M+1) × N(M+1) matrices, both formed by N×N blocks:
+        - P: the (m,l) block is a diagonal matrix containing
+        ∫ (dT_m/dτ) T_l dτ on the diagonal.
+        - R: the (m,l) block is a diagonal matrix containing T_m(1)T_l(1) = 1
+        on the diagonal.
+
+        Basis functions are assumed to be Chebyshev polynomials everywhere.
+        =#
+
+        # P = zeros(Float64, N*(M+1), N*(M+1))
+        P = zeros(Rational{Int}, N*(M+1), N*(M+1)) # DEBUG
+        R = zeros(Float64, N*(M+1), N*(M+1))
+
+        # Traverse columns first
+        for l in 0 : M
+            for m in 1 : M
+                # if m - l == 1
+                #     # This is the matrix P_ml as per the paper notation  
+                #     P[(m * N + 1): (m+1) * N, (l * N + 1): (l + 1) * N ] =
+                #     Diagonal((m * π/4.0) * ones(N))
+
+                # end
+                α = 0; β = 0
+                if rem(m+l,2) != 0  # (m + l) odd
+                    α = 1//(m+l)
+
+                end
+                if rem(m-l,2) != 0 # (m - l) odd
+                    β = 1//(m-l)
+
+                end
+
+                P[(m * N + 1): (m+1) * N, (l * N + 1): (l + 1) * N ] = Diagonal(m * (α + β) * ones(Int,N))
+                
+                # R_ml in the paper
+                R[(m * N + 1): (m+1) * N, (l * N + 1): (l + 1) * N ] = Diagonal(ones(N))
+
+            end
+        end
+
+        return P-R, P, R
+
+    end
+
+end
+    #= DEPRECATED 
     function build_system_matrix_IVP(N::Int, M::Int, 
         τ_int::Vector{Float64}, T_GL::Matrix{Float64}, T_GL′::Matrix{Float64})
 
@@ -40,47 +93,8 @@ module SpectralSolver
         # Return the system matrix
         return sys_matrix
     end
+    DEPRECATED =#
 
-    function PRMatrix(N::Int, M::Int)
-        #= Initializes the matrix P - R for the Newton iterations. 
-        
-        Inputs:
-        - N: state vector dimension
-        - M: order of the method
-
-        Returns two N(M+1) × N(M+1) matrices, both formed by N×N blocks:
-        - P: the (m,l) block is a diagonal matrix containing
-        ∫ (dT_m/dτ) T_l dτ on the diagonal.
-        - R: the (m,l) block is a diagonal matrix containing T_m(1)T_l(1) = 1
-        on the diagonal.
-
-        Basis functions are assumed to be Chebyshev polynomials everywhere.
-        =#
-
-        P = zeros(Float64, N*(M+1), N*(M+1))
-        R = zeros(Float64, N*(M+1), N*(M+1))
-
-        # Traverse columns first
-        for l in 0 : M
-            for m in 0 : M
-                if m - l == 1
-                    # This is the matrix P_ml as per the paper notation  
-                    P[(m * N + 1): (m+1) * N, (l * N + 1): (l + 1) * N ] =
-                    Diagonal((m * π/4.0) * ones(N))
-
-                end
-                
-                # R_ml in the paper
-                R[(m * N + 1): (m+1) * N, (l * N + 1): (l + 1) * N ] = Diagonal(ones(N))
-
-            end
-        end
-
-        return P-R, P, R
-
-    end
-
-end
 
 # function build_system_matrix_BVP(sys_size)
 

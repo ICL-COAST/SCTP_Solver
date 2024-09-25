@@ -3,19 +3,21 @@
 # using .SpectralBases: build_quadrature, create_basis_set
 include("SpectralSolver_MWE.jl")
 using .SpectralSolver: PRMatrix
+using Revise
+using Test
 
-N = 6; M = 4;
+N = 1; M = 5;
 
 PmR, P, R = PRMatrix(N,M)
 
-# const τ_GL, w_GL = build_quadrature(M, "Legendre");
-# const τ_GC, w_GC = build_quadrature(M, "Chebyshev");
-
-# # Test integration
-# for i 
-
-
-
+# Output from Wolframalpha
+P_true = [0 0 0 0 0 0
+2 0 -2/3 0 -2/15 0
+0 8/3 0 -8/5 0 -8/21
+2 0 18/5 0 -18/7 0
+0 32/15 0 32/7 0 -32/9
+2 0 50/21 0 50/9 0]
+@test isapprox(P, P_true)
 
 # # Integrate ∫(dT_m/dτ T_l) dτ over [-1, 1]. Pick m = l = M + 1.
 
