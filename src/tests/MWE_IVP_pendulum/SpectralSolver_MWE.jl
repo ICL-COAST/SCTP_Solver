@@ -1,8 +1,9 @@
 module SpectralSolver
 
     using LinearAlgebra
+    using .SpectralBases
 
-    export PRMatrix
+    export PRMatrix, GCNsolve
     
     function PRMatrix(N::Int, M::Int)
         #= Initializes the matrix P - R for the Newton iterations. 
@@ -57,7 +58,7 @@ module SpectralSolver
 
 end
 
-function GCNsolve(RHS::Function, x0::Vector{<:AbstractFloat}, tspan::Vector{<:AbstractFloat}, Δt::AbstractFloat, M::Int, ε::AbstractFloat)
+function GCNsolve(RHS::Function, x0::Vector{Float64}, tspan::Tuple{Float64,Float64,}, Δt::Float64, M::Int, ε::Float64, GCN_pars)
     #= Solve the IVP corresponding to the system of ODEs defined by RHS starting from the initial conditions x0.
 
     Arguments:
@@ -70,21 +71,61 @@ function GCNsolve(RHS::Function, x0::Vector{<:AbstractFloat}, tspan::Vector{<:Ab
     =#
 
     # Initializations
-    tCur = tspan[1]
+    t0 = tspan[1]
     step = 0
+    N = size(x0,1)
     
-    while tCur < tspan[2]
+    while t0 < tspan[2]
 
         if step < 1
             # First step
-            t0, t1 = tspan[1], tspan[1] + Δt
+            t1 = tspan[1] + Δt
 
         else
+            # Set t0, t1 to the next sub-interval
 
         end
 
+        # Adjust the sub-interval length to match final time (tspan[2])
+
+        # Initial guess for coefficients
+        C0 = zeros(Float64,N*(M+1))
+
+        # Solve the current sub-interval
+        GCNsolve_interval(RHS, C0, GCN_pars)
 
     end
+
+end
+
+
+function GCNsolve_interval(RHS::Function, C0::Vector{Float64}, GCN_pars)
+    #= Solve a sub-interval using the Gauss-Chebyshev-Newton method.
+    
+    Arguments:
+    - RHS: function providing the right-hand-side of the ODE system to be integrated.
+    =#
+
+    for it in 1:GCN_pars["max_iter"]
+        # Evaluate solution on Gauss-Chebyshev nodes
+
+
+        # Jacobian
+            # First step: full Newton
+
+            # Following steps: secant [TODO]
+        
+        # Assemble source term
+
+        # Assemble Jacobian matrix
+
+        # Update coefficients
+
+        # Stopping conditions
+        
+
+    end
+
 
 end
 

@@ -23,9 +23,11 @@ end
 # Set up ICs and timespan
 x0 = [3.13, 0]
 tspan = (0.0, 2500.0)
-N = 6                           # Dimension of the state vector.
-M = 50                          # Order of the Chebyshev expansion.
-Δt = (tspan[2] - tspan[1])/25.0
+N = 6                               # Dimension of the state vector.
+M = 50                              # Order of the Chebyshev expansion.
+Δt = (tspan[2] - tspan[1])/25.0     # Sub-interval size
+ε = 1e-12                           # GCN tolerance
+max_iter = 20                       # Maximum iterations per sub-interval
 
 
 #= GCN INITIALIZATIONS =#
@@ -40,4 +42,15 @@ T_GC, _, _ = create_basis_set(τ_GC, M, "Chebyshev");
 # Evaluate coefficient matrices
 PmR, _, _ = PRMatrix(N,M)
 
+# Pack into GCN params
+# TODO: pack all GCN params (M, nodes + basis functions, P - R, etc.) into a dictionary.
+# GCN_pars = Dict([("q_nodes", τ_GL), ("q_evals", T_GL), ("P - R", PmR), ("max_iter", max_iter)])
+GCN_pars = Dict(
+    "q_nodes" => τ_GL,
+    "q_evals" => T_GL,
+    "P - R" => PmR,
+    "max_iter" => max_iter
+)
+
 #= SOLVER CALL =#
+GCNsolve(pendulum!, x0, tspan, Δt, M, ε, GCN_pars)
