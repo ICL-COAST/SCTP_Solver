@@ -56,6 +56,38 @@ module SpectralSolver
     end
 
 end
+
+function GCNsolve(RHS::Function, x0::Vector{<:AbstractFloat}, tspan::Vector{<:AbstractFloat}, Δt::AbstractFloat, M::Int, ε::AbstractFloat)
+    #= Solve the IVP corresponding to the system of ODEs defined by RHS starting from the initial conditions x0.
+
+    Arguments:
+        - RHS: function providing the right-hand-side of the ODE system to be integrated.
+        - x0: vector of initial conditions
+        - tspan: array of initial and final times
+        - Δt: sub-interval size.
+        - M: order of the expansion basis.
+        - ε: coefficient convergence tolerance.
+    =#
+
+    # Initializations
+    tCur = tspan[1]
+    step = 0
+    
+    while tCur < tspan[2]
+
+        if step < 1
+            # First step
+            t0, t1 = tspan[1], tspan[1] + Δt
+
+        else
+
+        end
+
+
+    end
+
+end
+
     #= DEPRECATED 
     function build_system_matrix_IVP(N::Int, M::Int, 
         τ_int::Vector{Float64}, T_GL::Matrix{Float64}, T_GL′::Matrix{Float64})
