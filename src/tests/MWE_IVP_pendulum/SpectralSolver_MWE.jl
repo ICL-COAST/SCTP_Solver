@@ -1,7 +1,7 @@
 module SpectralSolver
 
     using LinearAlgebra
-    using .SpectralBases
+    using ..SpectralBases
 
     export PRMatrix, GCNsolve
     
@@ -91,23 +91,33 @@ function GCNsolve(RHS::Function, x0::Vector{Float64}, tspan::Tuple{Float64,Float
         # Initial guess for coefficients
         C0 = zeros(Float64,N*(M+1))
 
-        # Solve the current sub-interval
-        GCNsolve_interval(RHS, C0, GCN_pars)
+        # Solve the current sub-interval. Inputs are in dimensional time.
+        GCNsolve_interval(RHS, x0, C0, (t0,t1), GCN_pars)
 
     end
 
 end
 
 
-function GCNsolve_interval(RHS::Function, C0::Vector{Float64}, GCN_pars)
+function GCNsolve_interval(RHS::Function, x0::Vector{Float64}, C0::Vector{Float64}, tspan::Tuple{Float64,Float64}, GCN_pars)
     #= Solve a sub-interval using the Gauss-Chebyshev-Newton method.
     
     Arguments:
     - RHS: function providing the right-hand-side of the ODE system to be integrated.
     =#
 
+    # Evaluate initial conditions vector
+    lVec = zeros(Float64,N*(M+1))
+    for m = 0:M
+        lVec[m*N + 1:(m+1)*N] = (-1)^m .* x0
+
+    end
+
     for it in 1:GCN_pars["max_iter"]
+
+
         # Evaluate solution on Gauss-Chebyshev nodes
+        x_GL = eval_solution!(C0, )
 
 
         # Jacobian

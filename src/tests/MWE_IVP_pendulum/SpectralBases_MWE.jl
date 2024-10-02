@@ -85,6 +85,29 @@ using FastGaussQuadrature
         return basis_array, basis_array_deriv, basis_array_deriv2
     end 
 
+    function eval_solution!(C, ϕs, N, M)
+        #= Evaluate solution in-place, given basis coefficients and basis functions at 
+        preassigned τ
+        
+        Arguments:
+        - x: N-vector, solution evaluated at x(τ)
+        - C: N*(M+1)-vector of basis coefficients
+        - ϕs: (M+1)-vector of basis functions evaluated at a preassigned τ ∈ [-1, 1]
+        - N: state dimension
+        - M: basis order
+
+        =#
+
+        C = zeros(Float64,N)
+        for l in M:-1:0
+            # Slice N-dimensional coefficient vector of l-th order
+            cl = C[l*(N + 1):(l+1)*N]
+            C += ϕs[l] .* cl
+
+        end
+
+    end
+
 end
 
 # function build_spectrum(time, solution)

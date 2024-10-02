@@ -23,7 +23,7 @@ end
 # Set up ICs and timespan
 x0 = [3.13, 0]
 tspan = (0.0, 2500.0)
-N = 6                               # Dimension of the state vector.
+N = length(x0)                      # Dimension of the state vector.
 M = 50                              # Order of the Chebyshev expansion.
 Δt = (tspan[2] - tspan[1])/25.0     # Sub-interval size
 ε = 1e-12                           # GCN tolerance
