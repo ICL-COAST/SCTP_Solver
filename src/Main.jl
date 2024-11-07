@@ -46,32 +46,32 @@ const sys_matrix_IVP_inv = inv(sys_matrix_IVP);
 const sys_matrix_BVP = build_system_matrix_BVP(3);
 const sys_matrix_BVP_inv = inv(sys_matrix_BVP);
 
-println("I am using ", Threads.nthreads(), " threads!")
+# println("I am using ", Threads.nthreads(), " threads!")
 
-# for s_int in 0.1:0.1:1.5
-#     global time_span_IVP = (0.0, s_int * 5431)
-#     global s_interval_IVP = s_int * 5431
-#     save_name = "sec2_eq_o" * string(s_order_IVP) * "_s" * string(s_int)
-#     compare_numerical_spectral_IVP(save_name, x0, "Equinoctial", [RK45_solve], ["RK45"], [Spectral_solve, MCPI_solve], ["BGS", "MCPI"], rel_tol, abs_tol, 100)
-# end
+# # for s_int in 0.1:0.1:1.5
+# #     global time_span_IVP = (0.0, s_int * 5431)
+# #     global s_interval_IVP = s_int * 5431
+# #     save_name = "sec2_eq_o" * string(s_order_IVP) * "_s" * string(s_int)
+# #     compare_numerical_spectral_IVP(save_name, x0, "Equinoctial", [RK45_solve], ["RK45"], [Spectral_solve, MCPI_solve], ["BGS", "MCPI"], rel_tol, abs_tol, 100)
+# # end
 
-# for s_int in 1:1:14
-#     global rel_tol = 10.0 ^ (- s_int)
-#     global abs_tol = 10.0 ^ (- s_int)
-#     save_name = "sec2_eq_DP8_tol" * string(s_int)
-#     compare_numerical_spectral_IVP(save_name, x0, "Equinoctial", [DP8_solve], ["DP8"], [Spectral_solve], ["BGS"], rel_tol, abs_tol, 100)
-# end
+# # for s_int in 1:1:14
+# #     global rel_tol = 10.0 ^ (- s_int)
+# #     global abs_tol = 10.0 ^ (- s_int)
+# #     save_name = "sec2_eq_DP8_tol" * string(s_int)
+# #     compare_numerical_spectral_IVP(save_name, x0, "Equinoctial", [DP8_solve], ["DP8"], [Spectral_solve], ["BGS"], rel_tol, abs_tol, 100)
+# # end
 
-# t_spec, c_spec, e_mat, i_mat =  Spectral_solve(x0, time_span_IVP ./ norm_time_E, s_interval_IVP / norm_time_E, relative_tol_IVP, spectral_tol_IVP, spectral_iter_IVP, "Cowell");
-# plot_spectral_solution("Results", t_spec, c_spec, "test_solution", "Cowell", 1000, "IVP", size(x0)[1])
+# # t_spec, c_spec, e_mat, i_mat =  Spectral_solve(x0, time_span_IVP ./ norm_time_E, s_interval_IVP / norm_time_E, relative_tol_IVP, spectral_tol_IVP, spectral_iter_IVP, "Cowell");
+# # plot_spectral_solution("Results", t_spec, c_spec, "test_solution", "Cowell", 1000, "IVP", size(x0)[1])
 
-compare_numerical_spectral_IVP("sec2_cw_o30_s01", x0, "Cowell", [Vern8_solve], ["Vern8"], [Spectral_solve], ["BGS"], rel_tol, abs_tol, 1000)
+# compare_numerical_spectral_IVP("sec2_cw_o30_s01", x0, "Cowell", [Vern8_solve], ["Vern8"], [Spectral_solve], ["BGS"], rel_tol, abs_tol, 1000)
 
-# t_spec, c_spec, e_mat, i_mat =  Spectral_solve(x0, time_span_IVP ./ norm_time_E, s_interval_IVP / norm_time_E, relative_tol_IVP, spectral_tol_IVP, spectral_iter_IVP, "Cowell");
-# save_solution_spectral("Results/" * "test_solution" * "_performance_analysis", "test_solution" * "_" * "BGS", "Cowell", t_spec, c_spec, e_mat, i_mat, size(x0)[1], "IVP")
+# # t_spec, c_spec, e_mat, i_mat =  Spectral_solve(x0, time_span_IVP ./ norm_time_E, s_interval_IVP / norm_time_E, relative_tol_IVP, spectral_tol_IVP, spectral_iter_IVP, "Cowell");
+# # save_solution_spectral("Results/" * "test_solution" * "_performance_analysis", "test_solution" * "_" * "BGS", "Cowell", t_spec, c_spec, e_mat, i_mat, size(x0)[1], "IVP")
 
-x1 = [x_1, y_1, z_1]
-x2 = [x_2, y_2, z_2]
+# x1 = [x_1, y_1, z_1]
+# x2 = [x_2, y_2, z_2]
 
 # compare_numerical_spectral_BVP("sec1_Lambert_tof_40", x1, x2, [RK4_solve_BVP], ["RK4"], [Spectral_solve_BVP, MCPI_solve_BVP], ["BGS", "MCPI"], num_time_step, 100)
 

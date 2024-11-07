@@ -1,143 +1,7 @@
 module SpectralSolver
 
-    using LinearAlgebra
-    using ..SpectralBases
+    export build_system_matrix_IVP
 
-    export PRMatrix, GCNsolve
-    
-    function PRMatrix(N::Int, M::Int)
-        #= Initializes the matrix P - R for the Newton iterations. 
-        
-        Inputs:
-        - N: state vector dimension
-        - M: order of the method
-
-        Returns two N(M+1) × N(M+1) matrices, both formed by N×N blocks:
-        - P: the (m,l) block is a diagonal matrix containing
-        ∫ (dT_m/dτ) T_l dτ on the diagonal.
-        - R: the (m,l) block is a diagonal matrix containing T_m(1)T_l(1) = 1
-        on the diagonal.
-
-        Basis functions are assumed to be Chebyshev polynomials everywhere.
-        =#
-
-        # P = zeros(Float64, N*(M+1), N*(M+1))
-        P = zeros(Rational{Int}, N*(M+1), N*(M+1)) # DEBUG
-        R = zeros(Float64, N*(M+1), N*(M+1))
-
-        # Traverse columns first
-        for l in 0 : M
-            for m in 1 : M
-                # if m - l == 1
-                #     # This is the matrix P_ml as per the paper notation  
-                #     P[(m * N + 1): (m+1) * N, (l * N + 1): (l + 1) * N ] =
-                #     Diagonal((m * π/4.0) * ones(N))
-
-                # end
-                α = 0; β = 0
-                if rem(m+l,2) != 0  # (m + l) odd
-                    α = 1//(m+l)
-
-                end
-                if rem(m-l,2) != 0 # (m - l) odd
-                    β = 1//(m-l)
-
-                end
-
-                P[(m * N + 1): (m+1) * N, (l * N + 1): (l + 1) * N ] = Diagonal(m * (α + β) * ones(Int,N))
-                
-                # R_ml in the paper
-                R[(m * N + 1): (m+1) * N, (l * N + 1): (l + 1) * N ] = Diagonal(ones(N))
-
-            end
-        end
-
-        return P-R, P, R
-
-    end
-
-end
-
-function GCNsolve(RHS::Function, x0::Vector{Float64}, tspan::Tuple{Float64,Float64,}, Δt::Float64, M::Int, ε::Float64, GCN_pars)
-    #= Solve the IVP corresponding to the system of ODEs defined by RHS starting from the initial conditions x0.
-
-    Arguments:
-        - RHS: function providing the right-hand-side of the ODE system to be integrated.
-        - x0: vector of initial conditions
-        - tspan: array of initial and final times
-        - Δt: sub-interval size.
-        - M: order of the expansion basis.
-        - ε: coefficient convergence tolerance.
-    =#
-
-    # Initializations
-    t0 = tspan[1]
-    step = 0
-    N = size(x0,1)
-    
-    while t0 < tspan[2]
-
-        if step < 1
-            # First step
-            t1 = tspan[1] + Δt
-
-        else
-            # Set t0, t1 to the next sub-interval
-
-        end
-
-        # Adjust the sub-interval length to match final time (tspan[2])
-
-        # Initial guess for coefficients
-        C0 = zeros(Float64,N*(M+1))
-
-        # Solve the current sub-interval. Inputs are in dimensional time.
-        GCNsolve_interval(RHS, x0, C0, (t0,t1), GCN_pars)
-
-    end
-
-end
-
-
-function GCNsolve_interval(RHS::Function, x0::Vector{Float64}, C0::Vector{Float64}, tspan::Tuple{Float64,Float64}, GCN_pars)
-    #= Solve a sub-interval using the Gauss-Chebyshev-Newton method.
-    
-    Arguments:
-    - RHS: function providing the right-hand-side of the ODE system to be integrated.
-    =#
-
-    # Evaluate initial conditions vector
-    lVec = zeros(Float64,N*(M+1))
-    for m = 0:M
-        lVec[m*N + 1:(m+1)*N] = (-1)^m .* x0
-
-    end
-
-    for it in 1:GCN_pars["max_iter"]
-        # Evaluate solution on Gauss-Chebyshev nodes
-        x_GL = eval_solution!(C0, )
-
-
-        # Jacobian
-            # First step: full Newton
-
-            # Following steps: secant [TODO]
-        
-        # Assemble source term
-
-        # Assemble Jacobian matrix
-
-        # Update coefficients
-
-        # Stopping conditions
-        
-
-    end
-
-
-end
-
-    #= DEPRECATED 
     function build_system_matrix_IVP(N::Int, M::Int, 
         τ_int::Vector{Float64}, T_GL::Matrix{Float64}, T_GL′::Matrix{Float64})
 
@@ -174,8 +38,8 @@ end
         # Return the system matrix
         return sys_matrix
     end
-    DEPRECATED =#
 
+end
 
 # function build_system_matrix_BVP(sys_size)
 
